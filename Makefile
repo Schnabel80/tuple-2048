@@ -38,10 +38,10 @@ bench: t2048
 train-small: t2048
 	./t2048 train --net small --games $(GAMES) --threads $(THREADS) --every 1000 --out runs/small
 
-# The real thing: 4x6-tuple network, optimistic init, TC after 1/2 of the run.
+# The real thing (config "L3" from the A/B runs): 4x6 tuples, optimistic init, TC after 150k games.
 train: t2048
-	./t2048 train --net strong --games $(GAMES) --threads $(THREADS) --init 160000 \
-	    --tc-after $$(( $(GAMES) / 2 )) --stages 14 --every 10000 --out runs/strong
+	./t2048 train --net strong --games $(GAMES) --threads $(THREADS) --init 40000 \
+	    --tc-after 150000 --every 5000 --out runs/strong
 
 # Regenerate web/data/*.js from runs/ and the annotated sources.
 site:

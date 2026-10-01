@@ -275,8 +275,11 @@
           Unbekanntes bleibt verlockend, bis er es ausprobiert hat. So erkundet er systematischer.</li>
         <li><b><span class="term" data-term="tc">TC-Learning</span></b>: Jedes Gewicht bekommt seine eigene Lernrate.
           Fertig gelernte Gewichte werden eingefroren, statt ständig hin und her zu zappeln.</li>
-        <li><b><span class="term" data-term="multistage">Spielphasen</span></b>: Ab der ersten 16384 übernimmt ein
-          eigener Satz Tabellen, der sich nur um das Endspiel kümmert.</li>
+        <li><b><span class="term" data-term="multistage">Spielphasen</span></b>: Ab einer bestimmten Kachel übernimmt ein
+          eigener Satz Tabellen, der sich nur um das Endspiel kümmert. <i>Achtung, Überraschung:</i> In unserem Vergleich
+          hat das <b>geschadet</b>. Die neue Phase startet als Kopie eines noch schwachen Netzes und bekommt danach nur
+          wenig Lernstoff, weil Endspiele selten sind. In der Forschung lohnt sich der Trick erst nach vielen Millionen
+          Partien – nicht jede gute Idee hilft bei jedem Budget.</li>
         <li><b><span class="term" data-term="expectimax">Vorausschau</span></b> (nur beim Spielen, nicht beim Lernen):
           Der Agent denkt ein bis zwei Züge weiter, bevor er sein Bauchgefühl fragt.</li>
       </ul>

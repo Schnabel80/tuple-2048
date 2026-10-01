@@ -7,6 +7,6 @@
     {"dir": "runs/ab/l1", "label": "L1 Grundrezept", "short": "L1", "desc": "4 Tupel à 6 Zellen, TD(0) rückwärts, feste Lernrate 0,1."},
     {"dir": "runs/ab/l2", "label": "L2 + optimistischer Start", "short": "L2", "desc": "Wie L1, jedes Feld startet mit dem Schätzwert 40 000."},
     {"dir": "runs/ab/l3", "label": "L3 + TC-Learning", "short": "L3", "desc": "Wie L2, ab 150 000 Partien TC-Learning mit Lernrate 1,0."},
-    {"dir": "runs/ab/l4", "label": "L4 + Spielphasen", "short": "L4", "desc": "Wie L3, zusätzlich eigene Tabellen ab der ersten 8192."}
+    {"dir": "runs/ab/l4", "label": "L4 + Spielphasen", "short": "L4", "desc": "Wie L3, zusätzlich eigene Tabellen ab der ersten 8192. Hat hier geschadet: Die Endspiel-Tabellen wurden früh aus einem schwachen Netz kopiert und bekommen danach zu wenig Lernstoff."}
   ]
 }

@@ -26,9 +26,9 @@ make test                  # unit tests
 # a few minutes: small network, learns to reach 2048 in ~80 % of the games
 ./t2048 train --net small --games 100000 --threads 4 --out runs/small
 
-# the real thing (hours): 4x6-tuple network, optimistic start, TC learning, game phases
+# the real thing (~1.5 h on 4 cores): 4x6-tuple network, optimistic start, TC learning
 ./t2048 train --net strong --games 1000000 --threads 4 --init 40000 \
-              --tc-after 500000 --stages 14 --every 10000 --out runs/showcase
+              --tc-after 150000 --every 5000 --seed 7 --out runs/showcase
 
 ./t2048 eval --weights runs/showcase/weights.bin --games 1000 --depth 1 --threads 4
 ./t2048 demo --weights runs/showcase/weights.bin --delay 50       # watch one game as JSON lines

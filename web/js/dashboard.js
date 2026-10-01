@@ -181,7 +181,7 @@
           el("span", { text: LAGE[f.s] }),
           el("span", { class: "val", text: (f.w >= 0 ? "+" : "") + fmt(f.w) }));
         row.addEventListener("pointerenter", () => { view.highlight(f.cells, TUPLE_COLORS[f.t]); row.classList.add("active"); });
-        row.addEventListener("pointerleave", () => { view.clearHighlight(); row.classList.remove("active"); });
+        row.addEventListener("pointerleave", () => { view.highlight(mine[0].cells, TUPLE_COLORS[tupleSel]); row.classList.remove("active"); });
         list.append(row);
       });
       const sumT = mine.reduce((s, f) => s + f.w, 0);

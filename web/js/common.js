@@ -67,7 +67,15 @@ const UI = (() => {
         this.cells.push(c);
         this.cellsEl.append(c);
       }
-      this.root.append(this.cellsEl, this.tilesEl);
+      this.marksEl = el("div", { class: "marks" });
+      this.marks = [];
+      for (let i = 0; i < 16; i++) {
+        const m = el("div", { class: "mark" });
+        this.place(m, i);
+        this.marks.push(m);
+        this.marksEl.append(m);
+      }
+      this.root.append(this.cellsEl, this.tilesEl, this.marksEl);
       host.append(this.root);
       this.timer = null;
     }
@@ -116,15 +124,15 @@ const UI = (() => {
       const merged = new Set(trace.filter((t) => t.merge).map((t) => t.to));
       this.timer = setTimeout(() => this.render(finalBoard, { spawn: spawnPos, merged }), ms);
     }
+    /* Outline the given cells on an overlay above the tiles. */
     highlight(cells, color) {
-      this.cells.forEach((c, i) => {
-        c.classList.toggle("hl", cells.includes(i));
-        c.style.setProperty("--hl", color);
+      this.marks.forEach((m, i) => {
+        m.classList.toggle("hl", cells.includes(i));
+        m.style.setProperty("--hl", color);
       });
-      [...this.tilesEl.children].forEach((t) => t.classList.remove("hl"));
     }
     clearHighlight() {
-      this.cells.forEach((c) => c.classList.remove("hl"));
+      this.marks.forEach((m) => m.classList.remove("hl"));
     }
   }
 

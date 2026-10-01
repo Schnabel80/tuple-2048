@@ -184,7 +184,12 @@ label.inline { display: inline-flex; align-items: center; gap: 8px; color: var(-
   background: var(--board); border-radius: 10px; padding: 3%;
   touch-action: none; user-select: none;
 }
-.board .cells, .board .tiles { position: absolute; inset: 3%; }
+.board .cells, .board .tiles, .board .marks { position: absolute; inset: 3%; }
+.board .marks { pointer-events: none; }
+.board .mark { position: absolute; width: 22.75%; height: 22.75%; border-radius: 6px; }
+.board.mini .mark { width: 22%; height: 22%; border-radius: 3px; }
+.board .mark.hl { box-shadow: inset 0 0 0 3px var(--hl, #2a78d6), 0 0 0 2px var(--hl, #2a78d6); background: color-mix(in srgb, var(--hl, #2a78d6) 14%, transparent); }
+.board.mini .mark.hl { box-shadow: inset 0 0 0 2px var(--hl, #2a78d6); }
 .board .cell, .board .tile {
   position: absolute; width: 22.75%; height: 22.75%; border-radius: 6px;
 }
@@ -196,7 +201,7 @@ label.inline { display: inline-flex; align-items: center; gap: 8px; color: var(-
   container-type: inline-size;
 }
 .board.mini { border-radius: 6px; padding: 4%; }
-.board.mini .cells, .board.mini .tiles { inset: 4%; }
+.board.mini .cells, .board.mini .tiles, .board.mini .marks { inset: 4%; }
 .board.mini .cell, .board.mini .tile { width: 22%; height: 22%; border-radius: 3px; }
 .tile span { font-size: 38cqw; line-height: 1; }
 .tile.n3 span { font-size: 32cqw; } .tile.n4 span { font-size: 26cqw; } .tile.n5 span { font-size: 21cqw; }

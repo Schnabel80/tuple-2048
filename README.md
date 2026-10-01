@@ -41,8 +41,8 @@ Multi-stage *hurt* at this budget: the stage-1 tables are copied from a still we
 time an 8192 appears and then see too few late-game positions. Switching TC on causes a short dip
 (every weight starts with coherence 1, i.e. full step size) and then a steeper climb.
 
-The trained network (weights, visit counters and TC state, format v2) is stored in
-`models/showcase_1M.bin.xz` via Git LFS – see [Trained model](#trained-model).
+The trained network (weights, visit counters and TC state) is kept on the `model-weights` branch –
+see [Trained model](#trained-model).
 
 
 ## Quick start
@@ -88,15 +88,19 @@ cannot drift from the code (CI checks it).
 
 ## Trained model
 
-`models/showcase_1M.bin.xz` (≈ 300 MB, 1.07 GB unpacked) is tracked with Git LFS and **not downloaded by a
-normal clone** (`.lfsconfig` excludes it). To use it:
+The trained network (weights, visit counters and TC state, format v2; ≈ 300 MB xz-compressed,
+1.07 GB unpacked) lives on the separate branch
+[`model-weights`](https://github.com/Schnabel80/tuple-2048/tree/model-weights), split into parts below
+GitHub's 100 MB file limit, so `main` stays small. (Git LFS was not an option from the build environment.)
 
 ```bash
-git lfs pull --include="models/*"
-xz -dk models/showcase_1M.bin.xz
-./t2048 eval --weights models/showcase_1M.bin --games 1000 --depth 1 --threads 4
+git fetch origin model-weights
+git checkout origin/model-weights -- 'showcase_1M.bin.xz.part*' SHA256SUMS
+cat showcase_1M.bin.xz.part* > showcase_1M.bin.xz && sha256sum -c SHA256SUMS
+xz -d showcase_1M.bin.xz
+./t2048 eval --weights showcase_1M.bin --games 1000 --depth 1 --threads 4
 # continue training (TC state is included):
-./t2048 train --net strong --resume models/showcase_1M.bin --games 2000000 --threads 4 \
+./t2048 train --net strong --resume showcase_1M.bin --games 2000000 --threads 4 \
               --tc-after 150000 --every 5000 --out runs/continued
 ```
 

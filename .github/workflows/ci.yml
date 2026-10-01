@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build
+        # -march=native is not portable across runners; plain -O2 keeps CI honest.
+        run: make CC=${{ matrix.cc }} OPT="-O2" t2048 build/test_main
+      - name: Tests (C engine/learner, code page check, Python tools)
+        run: make CC=${{ matrix.cc }} OPT="-O2" test
+      - name: Smoke training run
+        run: |
+          ./t2048 train --net small --games 2000 --threads 2 --every 500 --out runs/ci
+          test -s runs/ci/milestones.csv
+          test -s runs/ci/replays/replay_2000.jsonl
+          test -s runs/ci/top/top_2000.json
+          ./t2048 eval --weights runs/ci/weights.bin --games 20 --depth 1
+          ./t2048 demo --weights runs/ci/weights.bin --out runs/ci/demo.jsonl

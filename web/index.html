@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tuple-2048 – Wie ein Computer 2048 lernt</title>
+<meta name="description" content="Ein selbstlernender 2048-Agent (N-Tuple-Netz + TD-Learning in C) – mit Lernkurve, Replays, gelernten Mustern und Erklärungen in einfacher Sprache.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23edc22e'/%3E%3Ctext x='16' y='21' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='white'%3E2048%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-tile">2048</span> tuple-2048</a>
+  <nav class="topnav" aria-label="Bereiche">
+    <a href="index.html" aria-current="page">Lernseite</a>
+    <a href="code.html">Code-Rundgang</a>
+  </nav>
+  <button class="theme-btn" type="button">☾ Dunkel</button>
+</header>
+
+<main class="wrap">
+
+<section class="hero">
+  <div class="kicker">Reinforcement Learning zum Anfassen</div>
+  <h1>Wie ein Computer 2048 lernt –<br>ohne dass es ihm jemand erklärt</h1>
+  <p class="lead">Dieses Programm kennt nur die Spielregeln. Keine Tipps, keine Strategie, kein Vorbild.
+    Es hat <b data-bind="games">…</b> Partien gegen den Zufall gespielt und dabei nach jeder Partie
+    ein kleines bisschen dazugelernt. Diese Seite zeigt, <b>was</b> es gelernt hat – und erklärt Schritt für Schritt,
+    <b>wie</b> das überhaupt möglich ist.</p>
+  <div class="stats" id="hero-stats"></div>
+  <p class="muted small">Tipp: Unterstrichene Begriffe wie <span class="term" data-term="tupel">Tupel</span> lassen sich anklicken.</p>
+</section>
+
+<!-- 1 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="spiel">
+  <div class="kicker">Kapitel 1</div>
+  <h2>Das Spiel – probier es selbst</h2>
+  <div class="split">
+    <div>
+      <div class="controls">
+        <button class="btn primary" id="play-new" type="button">Neues Spiel</button>
+        <button class="btn" id="play-ask" type="button">Agent fragen</button>
+        <button class="btn" id="play-auto" type="button" aria-pressed="false">Agent spielen lassen</button>
+        <span class="muted small" id="play-score">Punkte: 0</span>
+      </div>
+      <div class="board-row">
+        <div id="play-board" style="flex: 0 1 420px; min-width: 240px;"></div>
+        <div class="board-side">
+          <div class="muted small">Steuerung: Pfeiltasten oder wischen.</div>
+          <div id="play-advice"></div>
+        </div>
+      </div>
+    </div>
+    <div class="explain">
+      <h3>Die Regeln in 20 Sekunden</h3>
+      <p>Alle Kacheln rutschen in die gewählte Richtung. Zwei gleiche Kacheln, die aufeinandertreffen,
+        verschmelzen zu einer mit doppeltem Wert – und genau dieser Wert gibt Punkte. Nach jedem Zug taucht
+        auf einem zufälligen freien Feld eine neue <b>2</b> (90 %) oder <b>4</b> (10 %) auf.
+        Geht nichts mehr, ist das Spiel vorbei.</p>
+      <h3>Warum ist das für einen Computer schwer?</h3>
+      <p>Weil der <b>Zufall</b> mitspielt: Man kann nicht einfach alle Möglichkeiten durchrechnen. Ein Spiel dauert
+        tausende Züge, und nach jedem Zug kann eine von bis zu 30 neuen Situationen entstehen.</p>
+      <p>Menschen entdecken nach einer Weile Faustregeln („große Kachel in die Ecke!“). Unser Programm bekommt
+        <b>keine einzige</b> davon gesagt. Mit <b>Agent fragen</b> siehst du, wie das fertig trainierte
+        (kleine) Netz deine aktuelle Stellung einschätzt.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="sehen">
+  <div class="kicker">Kapitel 2</div>
+  <h2>Wie „sieht“ der Computer ein Spielfeld?</h2>
+  <div class="split rev">
+    <div class="explain">
+      <h3>Lauter kleine Experten</h3>
+      <p>Ein Spielfeld hat 16 Zellen, jede kann leer sein oder eine von 15 Kacheln tragen. Das ergibt
+        rund <b>18 Trillionen</b> mögliche Felder – viel zu viele, um sich für jedes etwas zu merken.</p>
+      <p>Der Trick: Der Agent schaut nie auf das ganze Feld, sondern nur auf kleine Ausschnitte, sogenannte
+        <span class="term" data-term="tupel">Tupel</span>. Ein Tupel ist z.B. „die oberste Reihe“ oder
+        „das 2×2-Quadrat oben links“. Für jede mögliche Belegung eines Tupels hat der Agent eine Zahl
+        gespeichert – ein <span class="term" data-term="gewicht">Gewicht</span>. Es bedeutet ungefähr:
+        <i>„Wenn diese vier Zellen so aussehen, ist das gut / schlecht.“</i></p>
+      <p>Jedes Tupel wird in <span class="term" data-term="symmetrie">8 Lagen</span> (gedreht und gespiegelt) über
+        das Feld gelegt. Die Gewichte aller Lagen und aller Tupel werden <b>addiert</b> – das ergibt den
+        <span class="term" data-term="wert">Wert</span> des Feldes: die Schätzung, wie viele Punkte ab hier
+        noch drin sind.</p>
+      <p class="note-box small">Fahre links über die Zeilen der Liste: Das Feld zeigt dir, auf welche Zellen dieser
+        „Experte“ gerade schaut und welche Meinung er beisteuert. Hier siehst du das <b>kleine</b> Netz
+        (4 Tupel à 4 Zellen); der starke Agent benutzt dieselbe Idee mit 6 Zellen pro Tupel.</p>
+    </div>
+    <div class="card">
+      <div class="controls">
+        <div class="seg" id="lens-tuples" role="group" aria-label="Tupel wählen"></div>
+        <button class="btn" id="lens-next" type="button">Anderes Feld</button>
+      </div>
+      <div class="board-row">
+        <div id="lens-board" style="flex: 0 1 300px; min-width: 220px;"></div>
+        <div class="board-side">
+          <div class="lens-list" id="lens-list"></div>
+        </div>
+      </div>
+      <p class="small muted" id="lens-total" style="margin-top:12px"></p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="lernen">
+  <div class="kicker">Kapitel 3</div>
+  <h2>Wie lernt er? Live in deinem Browser</h2>
+  <div class="split">
+    <div class="card">
+      <div class="controls">
+        <button class="btn primary" id="live-start" type="button">Lernen starten</button>
+        <button class="btn" id="live-reset" type="button">Alles vergessen</button>
+        <label class="inline">Tempo <input type="range" id="live-speed" min="1" max="3" value="2"></label>
+      </div>
+      <div class="stats" style="margin-top:0">
+        <div class="stat"><div class="v" id="live-games">0</div><div class="l">Partien gelernt</div></div>
+        <div class="stat"><div class="v" id="live-avg">–</div><div class="l">Ø Punkte (letzte 100)</div></div>
+        <div class="stat"><div class="v" id="live-2048">–</div><div class="l">2048 erreicht (letzte 100)</div></div>
+      </div>
+      <div id="live-chart"></div>
+      <h3 style="margin-top:18px">Der letzte Lernschritt – ganz konkret</h3>
+      <div class="td-flow">
+        <div><div id="td-a"></div><div class="small muted" style="text-align:center">Feld nach Zug <span id="td-t"></span></div></div>
+        <div class="arrow">→</div>
+        <div><div id="td-b"></div><div class="small muted" style="text-align:center">Feld nach dem nächsten Zug</div></div>
+      </div>
+      <div class="formula" id="td-formula" style="margin-top:12px">Starte das Lernen, um einen echten Lernschritt zu sehen.</div>
+    </div>
+    <div class="explain">
+      <h3>Aus Fehlern lernen – einen Zug später</h3>
+      <p>Vor jedem Zug probiert der Agent im Kopf alle vier Richtungen aus und bewertet das Feld, das jeweils
+        entstehen würde (das <span class="term" data-term="afterstate">Afterstate</span>). Er nimmt die Richtung mit
+        <i>Punkte jetzt + Wert danach</i> am höchsten. Kein Würfeln, kein Ausprobieren
+        (<span class="term" data-term="greedy">greedy</span>).</p>
+      <p>Nach der Partie schaut er zurück. Für jeden Zug vergleicht er seine damalige Schätzung mit dem, was
+        einen Zug später bekannt war: die Punkte des nächsten Zuges plus seine Schätzung für das nächste Feld.
+        Die Differenz ist der <span class="term" data-term="tdfehler">TD-Fehler</span>.</p>
+      <p>Dann verschiebt er alle beteiligten <span class="term" data-term="gewicht">Gewichte</span> um ein kleines Stück
+        (die <span class="term" data-term="lernrate">Lernrate</span>, hier 10 %) in Richtung dieses besseren Wertes.
+        Das ist <span class="term" data-term="td">Temporal-Difference-Learning</span>.</p>
+      <p><b>Woher kommt das echte Wissen?</b> Vom Spielende: Danach gibt es garantiert 0 Punkte. Diese eine sichere
+        Tatsache sickert Partie für Partie rückwärts in die Schätzungen früherer Spielsituationen.
+        Deshalb lernt der Agent <b>rückwärts</b> – vom letzten Zug zum ersten –, damit die Erkenntnis in einer
+        einzigen Partie durch die ganze Kette laufen kann.</p>
+      <p class="note-box small">Das hier ist eine echte Implementierung in JavaScript: dasselbe kleine Netz, dieselbe Regel
+        wie im C-Programm, nur langsamer. Nach ~2000 Partien (etwa eine Minute) erreicht es die ersten 2048er.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="kurve">
+  <div class="kicker">Kapitel 4</div>
+  <h2>Die Lernkurve des starken Agenten</h2>
+  <div class="split">
+    <div class="card">
+      <div class="controls">
+        <div class="seg" id="curve-mode" role="group" aria-label="Ansicht">
+          <button type="button" aria-pressed="true" data-mode="score">Punkte</button>
+          <button type="button" aria-pressed="false" data-mode="rates">Erreichte Kacheln</button>
+        </div>
+      </div>
+      <div id="curve-chart"></div>
+      <p class="small muted" id="curve-note"></p>
+    </div>
+    <div class="explain">
+      <h3>Was man hier sieht</h3>
+      <p>Jeder Punkt fasst die Partien seit dem letzten Messpunkt zusammen. Die x-Achse ist
+        <b>logarithmisch</b>: Jeder Teilstrich bedeutet zehnmal so viele Partien. So passen die ersten
+        Gehversuche und die letzten Millionen Partien in ein Bild.</p>
+      <p><b>Warum steigt die Kurve?</b> Am Anfang sind alle Gewichte geraten. Der Agent zieht praktisch zufällig
+        und verliert nach ein paar hundert Zügen. Doch jede Partie korrigiert die Schätzungen ein wenig. Situationen,
+        aus denen es oft gut weiterging, werden aufgewertet – und weil der Agent immer zu den bestbewerteten
+        Feldern zieht, spielt er sie öfter. Gute Gewohnheiten verstärken sich selbst.</p>
+      <p><b>Warum flacht sie ab?</b> Die einfachen Lektionen sind schnell gelernt. Danach geht es um seltene
+        Endspiel-Situationen mit sehr großen Kacheln – die kommen nur in wenigen Partien vor, also gibt es
+        dafür auch nur wenig Lernstoff.</p>
+      <div id="curve-facts"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="replay">
+  <div class="kicker">Kapitel 5</div>
+  <h2>Anfänger gegen Profi – dieselbe Partie, verschiedene Erfahrung</h2>
+  <div class="split">
+    <div class="card">
+      <div class="controls">
+        <label class="inline">Erfahrung <select id="rep-select"></select></label>
+      </div>
+      <div class="controls">
+        <button class="btn primary" id="rep-play" type="button">▶ Abspielen</button>
+        <button class="btn" id="rep-back" type="button" aria-label="Ein Zug zurück">◀ Zug</button>
+        <button class="btn" id="rep-step" type="button" aria-label="Ein Zug vor">Zug ▶</button>
+        <label class="inline">Tempo <input type="range" id="rep-speed" min="0" max="5" value="2"></label>
+      </div>
+      <div class="board-row">
+        <div id="rep-board" style="flex: 0 1 420px; min-width: 240px;"></div>
+        <div class="board-side">
+          <div class="small muted" id="rep-status"></div>
+          <input type="range" id="rep-seek" min="0" max="0" value="0" style="width:100%" aria-label="Zug wählen">
+          <h3 style="margin:14px 0 4px">Warum dieser Zug?</h3>
+          <div class="qbars" id="rep-q"></div>
+          <p class="small" id="rep-why"></p>
+        </div>
+      </div>
+    </div>
+    <div class="explain">
+      <h3>Was du hier siehst</h3>
+      <p>Während des Trainings hat das Programm an festen Meilensteinen eine <b>Vorführpartie</b> gespielt –
+        jedes Mal mit <b>demselben Zufall</b>: gleiche Startkacheln, und die neuen Kacheln werden aus demselben Zufallsstrom gezogen.
+        Unterschiede kommen also allein von der Erfahrung.</p>
+      <p>Die Balken zeigen, wie der Agent die vier Richtungen bewertet hat:
+        <i>Punkte dieses Zuges + geschätzter Wert des entstehenden Feldes</i>. Der blaue Balken ist der gewählte Zug.</p>
+      <p>Achte beim Profi auf die Gewohnheiten, die ihm <b>niemand beigebracht</b> hat: Die größte Kachel klebt in einer
+        Ecke, daneben liegt eine absteigende „Schlange“ (z.B. 4096 – 2048 – 1024 – …), und er vermeidet den Zug, der
+        diese Ordnung zerstören würde – oft nur, wenn er nicht anders kann.</p>
+      <p class="note-box small" id="rep-note">Beim Anfänger (wenige Partien) liegen die Werte nah beieinander –
+        er „weiß“ noch nicht, was gut ist.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="muster">
+  <div class="kicker">Kapitel 6</div>
+  <h2>Was steht in seinem „Gedächtnis“?</h2>
+  <div class="split rev">
+    <div class="explain">
+      <h3>Gelernte Muster lesen</h3>
+      <p>Der starke Agent hat vier Tupel mit je 6 Zellen. Jedes hat eine Tabelle mit 16⁶ = 16,7 Millionen Einträgen.
+        Rechts siehst du für jedes Tupel die Belegungen mit dem <b>höchsten gelernten Wert</b> – berücksichtigt werden nur
+        Einträge, die der Agent oft genug gesehen hat (sonst dominiert Rauschen).</p>
+      <p>Die grauen Zellen gehören nicht zum Tupel. Die Zahl unter jedem Mini-Feld ist das Gewicht – der Beitrag
+        dieses Musters zum Gesamtwert.</p>
+      <p><b>Was auffällt:</b> Die wertvollen Muster sind fast immer <b>geordnet</b> – große Kacheln am Rand,
+        der Größe nach aufgereiht. Genau die Faustregel, die erfahrene Spieler kennen. Der Agent hat sie
+        aus Millionen Partien selbst „herausgerechnet“.</p>
+      <p>Mit <b>Häufigste</b> siehst du stattdessen die Belegungen, die am öftesten vorkamen – der Alltag des Agenten.</p>
+    </div>
+    <div class="card">
+      <div class="controls">
+        <div class="seg" id="pat-mode" role="group" aria-label="Sortierung">
+          <button type="button" aria-pressed="true" data-mode="top_value">Wertvollste</button>
+          <button type="button" aria-pressed="false" data-mode="top_visited">Häufigste</button>
+        </div>
+        <label class="inline">Nach <select id="pat-snap"></select></label>
+      </div>
+      <div class="patterns" id="patterns"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="tricks">
+  <div class="kicker">Kapitel 7</div>
+  <h2>Was bringt welcher Trick?</h2>
+  <div class="split">
+    <div class="card">
+      <div id="ab-chart"></div>
+      <div id="ab-table" style="margin-top:14px"></div>
+    </div>
+    <div class="explain">
+      <h3>Vom Grundrezept zum starken Spieler</h3>
+      <p>Das Grundrezept (TD-Learning + Tupel) funktioniert schon gut. Ein paar bekannte Verbesserungen aus der Forschung
+        machen den Agenten deutlich stärker. Jede Linie ist ein eigener Trainingslauf mit identischem Zufall.</p>
+      <ul>
+        <li><b>Größere Tupel</b> (6 statt 4 Zellen) sehen mehr Zusammenhang, z.B. ganze Ketten am Rand.</li>
+        <li><b><span class="term" data-term="otd">Optimistischer Start</span></b>: Der Agent glaubt anfangs, alles sei toll.
+          Unbekanntes bleibt verlockend, bis er es ausprobiert hat. So erkundet er systematischer.</li>
+        <li><b><span class="term" data-term="tc">TC-Learning</span></b>: Jedes Gewicht bekommt seine eigene Lernrate.
+          Fertig gelernte Gewichte werden eingefroren, statt ständig hin und her zu zappeln.</li>
+        <li><b><span class="term" data-term="multistage">Spielphasen</span></b>: Ab der ersten 16384 übernimmt ein
+          eigener Satz Tabellen, der sich nur um das Endspiel kümmert.</li>
+        <li><b><span class="term" data-term="expectimax">Vorausschau</span></b> (nur beim Spielen, nicht beim Lernen):
+          Der Agent denkt ein bis zwei Züge weiter, bevor er sein Bauchgefühl fragt.</li>
+      </ul>
+      <div id="showcase"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 ─────────────────────────────────────────────────────────── -->
+<section class="chapter" id="glossar">
+  <div class="kicker">Zum Nachschlagen</div>
+  <h2>Glossar</h2>
+  <dl class="glossary" id="glossary"></dl>
+  <h3 style="margin-top:28px">Wie geht es weiter?</h3>
+  <p>Im <a href="code.html">Code-Rundgang</a> wird jedes C-Modul Abschnitt für Abschnitt erklärt – vom 64-Bit-Spielfeld
+    über die Lernregel bis zur Kommandozeile.</p>
+  <h3>Quellen</h3>
+  <ul class="small muted">
+    <li>Szubert, Jaśkowski (2014): <i>Temporal Difference Learning of N-Tuple Networks for the Game 2048</i>. IEEE CIG.</li>
+    <li>Yeh, Wu, Kao, Chen (2016): <i>Multi-Stage Temporal Difference Learning for 2048-like Games</i>. IEEE TCIAIG.</li>
+    <li>Matsuzaki (2016): <i>Systematic Selection of N-Tuple Networks with Consideration of Interinfluence for Game 2048</i>. TAAI.</li>
+    <li>Jaśkowski (2018): <i>Mastering 2048 with Delayed Temporal Coherence Learning, Multi-Stage Weight Promotion, Redundant Encoding and Carousel Shaping</i>. IEEE ToG.</li>
+    <li>Guei, Chen, Chen, Wu (2021): <i>Optimistic Temporal Difference Learning for 2048</i>. IEEE ToG.</li>
+  </ul>
+</section>
+
+</main>
+<footer>
+  <div class="wrap">tuple-2048 · MIT-Lizenz · Daten erzeugt mit <code>t2048 train</code> und <code>tools/bundle.py</code> ·
+    <span id="footer-meta"></span></div>
+</footer>
+
+<script src="data/runs.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/common.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+build/
+t2048
+runs/*
+!runs/README.md
+*.bin
+__pycache__/

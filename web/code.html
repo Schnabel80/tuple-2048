@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tuple-2048 – Code-Rundgang</title>
+<meta name="description" content="Alle C-Module des selbstlernenden 2048-Agenten, Abschnitt für Abschnitt und Zeile für Zeile erklärt.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23edc22e'/%3E%3Ctext x='16' y='21' font-size='11' font-family='Arial' font-weight='700' text-anchor='middle' fill='white'%3E2048%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-tile">2048</span> tuple-2048</a>
+  <nav class="topnav" aria-label="Bereiche">
+    <a href="index.html">Lernseite</a>
+    <a href="code.html" aria-current="page">Code-Rundgang</a>
+  </nav>
+  <button class="theme-btn" type="button">☾ Dunkel</button>
+</header>
+
+<main class="wrap wide">
+  <section class="hero" style="padding-bottom:8px">
+    <div class="kicker">Code-Rundgang</div>
+    <h1>Das Programm, Zeile für Zeile</h1>
+    <p class="lead">Rund 2000 Zeilen C, keine einzige externe Bibliothek. Links steht jeweils die Erklärung, rechts der Code.
+      Zeilen mit <b style="color:var(--accent)">blauer Nummer</b> haben eine eigene Anmerkung – einfach anklicken.
+      Die Erklärungen stehen als Kommentare direkt im Quelltext (<code>/*@ … */</code> und <code>//@</code>) und werden
+      daraus automatisch erzeugt; sie können also nicht veralten.</p>
+  </section>
+
+  <section class="chapter" id="architektur" style="padding-top:20px">
+    <h2>Die Architektur auf einen Blick</h2>
+    <div class="split">
+      <div class="card">
+        <svg class="arch" viewBox="0 0 760 430" role="img" aria-label="Architekturdiagramm: main ruft train, train nutzt td, td nutzt ntuple und board, Ausgabe über io an die Webseite">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-3)"/>
+            </marker>
+          </defs>
+          <g class="box"><rect x="300" y="12" width="160" height="52" rx="10"/><text x="380" y="35" text-anchor="middle" font-weight="700">main.c</text><text class="sub" x="380" y="52" text-anchor="middle">Kommandozeile</text></g>
+          <g class="box"><rect x="120" y="104" width="180" height="52" rx="10"/><text x="210" y="127" text-anchor="middle" font-weight="700">train.c</text><text class="sub" x="210" y="144" text-anchor="middle">Threads, Meilensteine</text></g>
+          <g class="box"><rect x="460" y="104" width="180" height="52" rx="10"/><text x="550" y="127" text-anchor="middle" font-weight="700">search.c</text><text class="sub" x="550" y="144" text-anchor="middle">Expectimax (nur Spielen)</text></g>
+          <g class="box hot"><rect x="290" y="196" width="180" height="52" rx="10"/><text x="380" y="219" text-anchor="middle" font-weight="700">td.c</text><text class="sub" x="380" y="236" text-anchor="middle">Zug wählen + TD-Lernen</text></g>
+          <g class="box hot"><rect x="120" y="290" width="180" height="52" rx="10"/><text x="210" y="313" text-anchor="middle" font-weight="700">ntuple.c</text><text class="sub" x="210" y="330" text-anchor="middle">V(s) = Σ Gewichte</text></g>
+          <g class="box hot"><rect x="460" y="290" width="180" height="52" rx="10"/><text x="550" y="313" text-anchor="middle" font-weight="700">board.c</text><text class="sub" x="550" y="330" text-anchor="middle">64-Bit-Spielfeld, Tabellen</text></g>
+          <g class="box"><rect x="560" y="12" width="180" height="52" rx="10"/><text x="650" y="35" text-anchor="middle" font-weight="700">io.c</text><text class="sub" x="650" y="52" text-anchor="middle">CSV · JSON · JSONL</text></g>
+          <g class="box"><rect x="20" y="372" width="720" height="44" rx="10"/><text x="380" y="399" text-anchor="middle">runs/… → tools/bundle.py → web/data/runs.js → diese Webseite</text></g>
+          <path class="edge" d="M330,64 L240,104"/>
+          <path class="edge" d="M430,64 L520,104"/>
+          <path class="edge" d="M240,156 L340,196"/>
+          <path class="edge" d="M520,156 L420,196"/>
+          <path class="edge" d="M340,248 L240,290"/>
+          <path class="edge" d="M420,248 L520,290"/>
+          <path class="edge" d="M300,316 L460,316"/>
+          <path class="edge data" d="M650,64 L650,90 L700,90 L700,372"/>
+          <path class="edge data" d="M300,120 Q520,70 560,48"/>
+        </svg>
+      </div>
+      <div class="explain">
+        <h3>Von unten nach oben gelesen</h3>
+        <ul>
+          <li><b>board</b> – das Spiel selbst. Ein Feld ist eine 64-Bit-Zahl, ein Zug sind vier Tabellen-Nachschläge.</li>
+          <li><b>ntuple</b> – die Bewertung. Tupel lesen Zellen ab, schlagen Gewichte nach und summieren.</li>
+          <li><b>td</b> – Entscheiden und Lernen. Bester Zug = höchstes <i>Punkte + Wert</i>; nach der Partie rückwärts korrigieren.</li>
+          <li><b>search</b> – optionale Vorausschau für Vorführungen.</li>
+          <li><b>train</b> – organisiert Tausende Partien auf mehreren Threads und hält an Meilensteinen an.</li>
+          <li><b>io</b> – schreibt, was die Webseite anzeigt.</li>
+          <li><b>main</b> – macht aus all dem ein Kommandozeilen-Programm.</li>
+        </ul>
+        <p class="small muted">Die blau umrandeten Module sind der „heiße Pfad“: Hier verbringt das Training 99 % seiner Zeit.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="code-layout">
+    <nav class="code-nav" id="code-nav" aria-label="Module"></nav>
+    <div id="modules"></div>
+  </div>
+</main>
+<footer><div class="wrap">tuple-2048 · Code-Rundgang erzeugt von <code>tools/gen_codepage.py</code> · <a href="index.html">zurück zur Lernseite</a></div></footer>
+
+<script src="data/code.js"></script>
+<script src="js/common.js"></script>
+<script src="js/codepage.js"></script>
+</body>
+</html>

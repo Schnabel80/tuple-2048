@@ -71,6 +71,7 @@ const Chart = (() => {
       xt = [];
       for (let p = Math.floor(Math.log10(Math.max(xMin, 1))); 10 ** p <= xMax * 1.0001; p++) if (10 ** p >= xMin * 0.999) xt.push(10 ** p);
     } else xt = niceTicks(xMin, xMax, narrow ? 4 : 6);
+    if (narrow && xt.length > 4) xt = xt.filter((_, i) => (xt.length - 1 - i) % 2 === 0); // thin out, keep the last tick
     for (const t of xt) {
       const tx = svg("text", { x: X(t), y: M.t + ph + 18, "text-anchor": "middle" });
       tx.textContent = xf(t);

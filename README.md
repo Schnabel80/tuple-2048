@@ -14,7 +14,36 @@ training, no external libraries.
 | **Extras** | optimistic initialisation (OTD), temporal coherence (TC), multi-stage weights, Hogwild threads, expectimax for evaluation |
 | **Website** | learning curve, replay viewer ("beginner vs. pro"), learned patterns, tuple lens, *live TD learning in the browser*, line-by-line code walkthrough |
 
-<!-- RESULTS -->
+## Results
+
+Main run (`runs/showcase`): 4×6-tuple network, optimistic start 40 000, TC learning from 150 000 games,
+1 000 000 training games, 4 threads, **93 minutes** on a 4-core cloud VM.
+
+**Frozen network, 1-ply greedy vs. expectimax search** (`tools/showcase.py`):
+
+| Search | Games | Avg. score | Best | 2048 | 8192 | 16384 |
+|---|---:|---:|---:|---:|---:|---:|
+| none (greedy) | 1000 | 160 055 | 324 844 | 98.5 % | 87.9 % | 9.4 % |
+| 1 chance layer | 1000 | 206 187 | 367 460 | 99.9 % | 96.2 % | 33.3 % |
+| 2 chance layers | 100 | 251 636 | 370 496 | 100 % | 99 % | 60 % |
+
+**A/B runs** (300 000 games each, identical seeds, average of the last three milestones):
+
+| Variant | Avg. score | 2048 | 8192 |
+|---|---:|---:|---:|
+| small net (4×4-tuples) | 34 351 | 81.6 % | 0 % |
+| L1 4×6-tuples, TD(0) | 103 366 | 94.5 % | 48.6 % |
+| L2 + optimistic init | 106 385 | 96.1 % | 51.7 % |
+| **L3 + TC learning** | **130 468** | **98.7 %** | **71.3 %** |
+| L4 + multi-stage (from 8192) | 96 425 | 97.8 % | 15.6 % |
+
+Multi-stage *hurt* at this budget: the stage-1 tables are copied from a still weak network the first
+time an 8192 appears and then see too few late-game positions. Switching TC on causes a short dip
+(every weight starts with coherence 1, i.e. full step size) and then a steeper climb.
+
+The trained network (weights, visit counters and TC state, format v2) is stored in
+`models/showcase_1M.bin.xz` via Git LFS – see [Trained model](#trained-model).
+
 
 ## Quick start
 
@@ -56,6 +85,20 @@ interested non-programmers:
 `web/code.html` – every C module, section by section, with clickable line notes. The text lives in
 the sources themselves (`/*@ … */`, `//@ …`) and is extracted by `tools/gen_codepage.py`, so it
 cannot drift from the code (CI checks it).
+
+## Trained model
+
+`models/showcase_1M.bin.xz` (≈ 300 MB, 1.07 GB unpacked) is tracked with Git LFS and **not downloaded by a
+normal clone** (`.lfsconfig` excludes it). To use it:
+
+```bash
+git lfs pull --include="models/*"
+xz -dk models/showcase_1M.bin.xz
+./t2048 eval --weights models/showcase_1M.bin --games 1000 --depth 1 --threads 4
+# continue training (TC state is included):
+./t2048 train --net strong --resume models/showcase_1M.bin --games 2000000 --threads 4 \
+              --tc-after 150000 --every 5000 --out runs/continued
+```
 
 ## Command line
 

@@ -351,6 +351,12 @@
     if (f16384) facts.push(`die erste <b>16384</b> nach ${fmt(f16384)}`);
     if (f32768) facts.push(`sogar eine <b>32768</b> nach ${fmt(f32768)}`);
     if (facts.length) $("curve-facts").append(el("p", { class: "note-box small", html: "Meilensteine dieses Laufs: " + facts.join(", ") + "." }));
+    if (meta.tc && meta.tc_after)
+      $("curve-facts").append(el("p", { class: "small", style: "margin-top:12px", html:
+        `<b>Der Knick bei „TC an“</b> (nach ${fmt(meta.tc_after)} Partien): Ab hier bekommt jedes Gewicht seine eigene Lernrate. ` +
+        "Im ersten Moment weiß das Verfahren aber noch nicht, welche Gewichte schon fertig sind – alle lernen kurz mit voller Kraft, " +
+        "und der Agent „verlernt“ für ein paar tausend Partien einiges. Dann bremst TC die fertigen Gewichte ab, und die Kurve steigt " +
+        "<b>steiler als vorher</b>. Ein sanfteres Einschalten wäre eine mögliche Verbesserung." }));
     $("curve-note").textContent = `Netz „${meta.net}“, ${meta.tuples.length} Tupel × ${meta.tuples[0].length} Zellen, Lernrate ${meta.alpha}` +
       (meta.init ? `, optimistischer Start ${fmt(meta.init)}` : "") + (meta.tc ? `, TC ab ${fmt(meta.tc_after)} Partien` : "") +
       (meta.stages && meta.stages.length > 1 ? `, Spielphasen ab 2^${meta.stages.slice(1).join(", 2^")}` : "") + ".";
@@ -506,13 +512,14 @@
     const sc = MAIN && MAIN.showcase;
     if (sc && sc.rows) {
       const t = el("table", { class: "data" });
-      t.append(el("tr", {}, ...["Vorausschau", "Partien", "Ø Punkte", "8192", "16384", "32768"].map((h) => el("th", { text: h }))));
+      t.append(el("tr", {}, ...["Vorausschau", "Partien", "Ø Punkte", "2048", "8192", "16384"].map((h) => el("th", { text: h }))));
       for (const row of sc.rows)
         t.append(el("tr", {}, el("td", { text: row.label, style: "text-align:left" }), el("td", { text: fmt(row.games) }), el("td", { text: fmt(row.avg_score) }),
-          el("td", { text: pct(row.rate_8192) }), el("td", { text: pct(row.rate_16384) }), el("td", { text: pct(row.rate_32768) })));
+          el("td", { text: pct(row.rate_2048) }), el("td", { text: pct(row.rate_8192) }), el("td", { text: pct(row.rate_16384) })));
       $("showcase").append(el("h3", { text: "Lernen + Vorausschau", style: "margin-top:18px" }),
         el("p", { class: "small", text: "Das fertige Netz aus Kapitel 4, gespielt ohne und mit Expectimax-Vorausschau:" }),
-        el("div", { class: "tbl-scroll", style: "max-height:none" }, t));
+        el("div", { class: "tbl-scroll", style: "max-height:none" }, t),
+        el("p", { class: "small", style: "margin-top:8px", text: "Das Netz ist in allen drei Zeilen exakt dasselbe – nur das Nachdenken vor jedem Zug unterscheidet sich. Lernen liefert das Bauchgefühl, Vorausschau nutzt es geschickter. Der Preis: Jede Ebene kostet etwa 20–30-mal so viel Rechenzeit pro Zug." }));
     }
   }
 

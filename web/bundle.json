@@ -1,7 +1,7 @@
 {
   "main": "runs/showcase",
   "small": "runs/ab/small",
-  "replays": [1, 10, 100, 1000, 10000, 100000, 1000000],
+  "replays": [1, 10, 100, 1000, 10000, 100000, 500000, 1000000],
   "ab": [
     {"dir": "runs/ab/small", "label": "Kleines Netz", "short": "Klein", "desc": "4 Tupel à 4 Zellen (1 MB), sonst wie L1."},
     {"dir": "runs/ab/l1", "label": "L1 Grundrezept", "short": "L1", "desc": "4 Tupel à 6 Zellen, TD(0) rückwärts, feste Lernrate 0,1."},

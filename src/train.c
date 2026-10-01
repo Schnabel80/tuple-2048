@@ -261,7 +261,7 @@ int train_run(const train_cfg_t *c) {
         fprintf(stderr, "error: cannot %s network (%d)\n", c->resume ? "load" : "create", rc);
         return 1;
     }
-    n->alpha = c->alpha;
+    n->alpha = n->tc ? c->tc_alpha : c->alpha; //@ Ein mit TC gespeichertes Netz lernt mit TC weiter.
     if (c->tc && n->games_trained >= c->tc_after) {
         if (net_enable_tc(n)) return 1;
         n->alpha = c->tc_alpha;

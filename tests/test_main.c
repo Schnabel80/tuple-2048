@@ -262,6 +262,13 @@ static void test_save_load(void) {
     CHECK(net_load(&m, path) == 0, "load");
     CHECK(m.games_trained == 12345 && m.n_stages == 2 && m.stage_exp[1] == 13, "header roundtrip");
     CHECK(memcmp(n.w[0][2], m.w[0][2], n.size[2] * sizeof(float)) == 0 && m.visits[0][1][77] == 99, "data roundtrip");
+    /* TC state must survive a save/load cycle, otherwise resumed training restarts at full step size */
+    net_free(&m);
+    CHECK(net_enable_tc(&n) == 0, "enable tc");
+    n.tc_e[1][3][4242] = 1.5f;
+    n.tc_a[1][3][4242] = 2.5f;
+    CHECK(net_save(&n, path) == 0 && net_load(&m, path) == 0, "save/load with tc");
+    CHECK(m.tc && m.tc_e[1][3][4242] == 1.5f && m.tc_a[1][3][4242] == 2.5f, "tc roundtrip");
     unlink(path);
     net_free(&n);
     net_free(&m);

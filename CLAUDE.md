@@ -50,8 +50,9 @@ Run `make test` after every change. CI runs build + tests with gcc and clang plu
    Symmetry `s`: mirror columns if `s >= 4`, then rotate 90° `(s mod 4)` times –
    implemented identically in `ntuple.c`, `tests/test_main.c` and `web/js/engine.js`.
 4. **Weights file format** (`net_save`/`net_load`, read by `bundle.py`): magic,
-   version 1, endian marker `0x01020304`, tuple cells, stages, then per stage per
-   tuple `float32[16^len]` followed by `uint32 visits[16^len]`. Bump `WEIGHTS_VERSION`
+   version 2, endian marker `0x01020304`, flags (bit 0 visits, bit 1 TC), tuple cells,
+   stages, then per stage per tuple `float32 w[16^len]`, `uint32 visits[16^len]` and – if
+   TC is on – `float32 E[16^len]`, `float32 A[16^len]`. Version 1 files (no TC) still load. Bump `WEIGHTS_VERSION`
    on any change and update `tools/bundle.py:read_weights`.
 5. **Replay / top / CSV formats** carry `format_version` (`io.h: FORMAT_VERSION`).
    `bundle.py` compacts replays (start board + direction string + spawn string); the

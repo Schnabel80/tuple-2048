@@ -116,7 +116,10 @@ Boards are 16 hex digits: digit *i* is the exponent of cell *i* (row-major from 
 8. **Optimistic init needs the right scale.** Too high (here: ≥ 120 000) and the agent spends the whole
    budget "disappointing" itself; 40 000 helped within a few hundred thousand games.
 9. **Two 32768 tiles cannot merge** in a 4-bit encoding – capped explicitly in C, Python and JS alike.
-10. **Same seed, same game?** Only with one thread. Demo games use a fixed seed, but the spawn positions
+10. **Persist the TC accumulators.** Our first 1M run resumed from a checkpoint without them: every weight
+    looked "far from converged" again, was corrected at full TC rate (1.0) and the average score fell from
+    143k to 103k within 5000 games. Weights format v2 now stores `E` and `A`; a test guards the roundtrip.
+11. **Same seed, same game?** Only with one thread. Demo games use a fixed seed, but the spawn positions
     depend on the board, so games diverge as soon as the agent plays differently – which is exactly the point.
 
 ## References

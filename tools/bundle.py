@@ -95,8 +95,8 @@ def read_weights(path: Path) -> dict:
     data = path.read_bytes()
     if data[:8] != b"T2048W\0\0":
         raise ValueError(f"{path}: not a weights file")
-    version, endian, n_tuples, n_stages, _flags = struct.unpack_from("<5I", data, 8)
-    if version != 1 or endian != 0x01020304:
+    version, endian, n_tuples, n_stages, flags = struct.unpack_from("<5I", data, 8)
+    if version not in (1, 2) or endian != 0x01020304:
         raise ValueError(f"{path}: unsupported version/endianness")
     (games,) = struct.unpack_from("<Q", data, 28)
     name = data[36:68].split(b"\0", 1)[0].decode()
@@ -112,6 +112,8 @@ def read_weights(path: Path) -> dict:
         w = array.array("f")
         w.frombytes(data[off : off + 4 * size])
         off += 8 * size  # skip the visit counters
+        if version >= 2 and flags & 2:
+            off += 8 * size  # skip the TC accumulators E and A
         weights.append(w)
     return {"name": name, "games": games, "tuples": tuples, "weights": weights}
 

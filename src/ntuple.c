@@ -243,11 +243,18 @@ float net_update(net_t *n, board_t b, float err) {
 /*@ ### Gewichte speichern
 
 Ein einfaches Binärformat: ein kurzer Kopf (Kennung, Version, Tupel-Formen,
-Stufen, Anzahl trainierter Partien), danach die rohen Tabellen. Ein
+Stufen, Anzahl trainierter Partien), danach die rohen Tabellen.
+
+Ist TC-Learning aktiv, werden auch die TC-Summen `E` und `A` mitgespeichert
+(Flag-Bit 2). Ohne sie würde ein fortgesetztes Training jedes Gewicht wieder
+als „noch weit vom Ziel“ behandeln und mit voller Lernrate korrigieren – das
+zerstört Gelerntes. (Genau dieser Fehler ist beim ersten Hauptlauf passiert.) Ein
 **Endianness-Marker** (`0x01020304`) verhindert, dass eine Datei auf einem
 Rechner mit anderer Byte-Reihenfolge falsch gelesen wird. */
 #define WEIGHTS_MAGIC "T2048W\0\0"
-#define WEIGHTS_VERSION 1u
+#define WEIGHTS_VERSION 2u
+#define FLAG_VISITS 1u
+#define FLAG_TC 2u
 #define ENDIAN_MARK 0x01020304u
 
 static int wr(FILE *f, const void *p, size_t n) { return fwrite(p, 1, n, f) == n ? 0 : -1; }
@@ -256,7 +263,7 @@ static int rd(FILE *f, void *p, size_t n) { return fread(p, 1, n, f) == n ? 0 : 
 int net_save(const net_t *n, const char *path) {
     FILE *f = fopen(path, "wb");
     if (!f) return -1;
-    uint32_t hdr[5] = {WEIGHTS_VERSION, ENDIAN_MARK, (uint32_t)n->n_tuples, (uint32_t)n->n_stages, 1u /* has visits */};
+    uint32_t hdr[5] = {WEIGHTS_VERSION, ENDIAN_MARK, (uint32_t)n->n_tuples, (uint32_t)n->n_stages, FLAG_VISITS | (n->tc ? FLAG_TC : 0u)};
     int rc = wr(f, WEIGHTS_MAGIC, 8) | wr(f, hdr, sizeof hdr) | wr(f, &n->games_trained, 8); //@ Fehler werden per | gesammelt – ein einziger Fehlschlag macht rc ≠ 0.
     char name[32] = {0};
     memcpy(name, n->name, sizeof name - 1);
@@ -270,8 +277,10 @@ int net_save(const net_t *n, const char *path) {
         rc |= wr(f, &len, 4) | wr(f, n->cells[t], len);
     }
     for (int s = 0; s < n->n_stages && !rc; s++)
-        for (int t = 0; t < n->n_tuples && !rc; t++)
+        for (int t = 0; t < n->n_tuples && !rc; t++) {
             rc |= wr(f, n->w[s][t], n->size[t] * sizeof(float)) | wr(f, n->visits[s][t], n->size[t] * sizeof(uint32_t)); //@ Die Tabellen werden roh geschrieben: 4 Byte pro Gewicht, 4 Byte pro Besuchszähler.
+            if (n->tc) rc |= wr(f, n->tc_e[s][t], n->size[t] * sizeof(float)) | wr(f, n->tc_a[s][t], n->size[t] * sizeof(float)); //@ TC-Zustand gehört zum Lernstand dazu.
+        }
     if (fclose(f)) rc = -1;
     return rc;
 }
@@ -289,7 +298,7 @@ int net_load(net_t *n, const char *path) {
     char magic[8], name[32];
     uint32_t hdr[5];
     uint64_t games;
-    if (rd(f, magic, 8) || memcmp(magic, WEIGHTS_MAGIC, 8) || rd(f, hdr, sizeof hdr) || hdr[0] != WEIGHTS_VERSION ||
+    if (rd(f, magic, 8) || memcmp(magic, WEIGHTS_MAGIC, 8) || rd(f, hdr, sizeof hdr) || (hdr[0] != 1u && hdr[0] != WEIGHTS_VERSION) ||
         hdr[1] != ENDIAN_MARK || rd(f, &games, 8) || rd(f, name, sizeof name)) {
         fclose(f);
         return -2;
@@ -323,10 +332,17 @@ int net_load(net_t *n, const char *path) {
             return -3;
         }
     }
+    int has_tc = hdr[0] >= 2u && (hdr[4] & FLAG_TC); //@ Version 1 kannte noch keinen TC-Zustand.
+    if (has_tc && net_enable_tc(n)) {
+        fclose(f);
+        net_free(n);
+        return -4;
+    }
     for (int s = 0; s < n_stages; s++) {
         n->stage_ready[s] = (int)ready[s];
         for (int t = 0; t < n->n_tuples; t++)
-            if (rd(f, n->w[s][t], n->size[t] * sizeof(float)) || rd(f, n->visits[s][t], n->size[t] * sizeof(uint32_t))) {
+            if (rd(f, n->w[s][t], n->size[t] * sizeof(float)) || rd(f, n->visits[s][t], n->size[t] * sizeof(uint32_t)) ||
+                (has_tc && (rd(f, n->tc_e[s][t], n->size[t] * sizeof(float)) || rd(f, n->tc_a[s][t], n->size[t] * sizeof(float))))) {
                 fclose(f);
                 net_free(n);
                 return -4;
